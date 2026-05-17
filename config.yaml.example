@@ -1,0 +1,108 @@
+# ── Daemon settings ──────────────────────────────────────────────────────────
+daemon:
+  # Max concurrent event-processing tasks (default: 4)
+  max_workers: 4
+  # Max bytes of log data to collect per container (default: 5 MiB)
+  max_log_bytes: 5242880
+  # Timeout in seconds for each event/log/metrics collection (default: 60)
+  collect_timeout: 60
+
+# ── Platform definitions ─────────────────────────────────────────────────────
+platforms:
+  # ── Docker ─────────────────────────────────────────────────────────────────
+  docker:
+    instances:
+        # Name used as `origin.instance` in stored events
+      - name: "prod-docker-01"
+        # Docker daemon address.
+        #   unix:///var/run/docker.sock    — local socket
+        #   tcp://10.0.0.1:2375            — remote TCP (no TLS)
+        #   tcp://10.0.0.1:2376            — remote TCP with TLS
+        # (default: "unix:///var/run/docker.sock")
+        socket: "unix:///var/run/docker.sock"
+        # Optional: override host part of the connection URL.
+        # When set, `socket` is used as scheme+port, and `host` replaces the
+        # address portion.  Useful when the daemon is behind a reverse proxy.
+        host: ~
+        # Enable TLS client verification (default: false)
+        tls_verify: false
+        # Path to TLS certificate directory (must contain cert.pem, key.pem, ca.pem)
+        # Required when tls_verify is true.
+        cert_path: ~
+        # Only watch containers whose labels match these key=value pairs.
+        #   com.docker.compose.project: myapp    — only compose project "myapp"
+        # Leave empty to watch all containers.
+        label_filters: {}
+        # Optional: Prometheus metrics collection at container stop.
+        metrics:
+          prometheus: "http://10.0.0.1:9090"
+
+          # PromQL queries.  `{{.Name}}` is replaced with the container name.
+          # Keys become metric names in the output document.
+          queries:
+            cpu:       'rate(container_cpu_usage_seconds_total{name="{{.Name}}"}[30s])'
+            memory:    'container_memory_usage_bytes{name="{{.Name}}"}'
+            fs_usage:  'container_fs_usage_bytes{name="{{.Name}}"}'
+            fs_limit:  'container_fs_limit_bytes{name="{{.Name}}"}'
+            network_rx: 'rate(container_network_receive_bytes_total{name="{{.Name}}"}[30s])'
+            network_tx: 'rate(container_network_transmit_bytes_total{name="{{.Name}}"}[30s])'
+
+      # Multiple instances are supported
+      - name: "prod-docker-02"
+        socket: "tcp://10.0.0.2:2375"
+
+  # ── Kubernetes ─────────────────────────────────────────────────────────────
+  kubernetes:
+    instances:
+        # Name used as `origin.instance` in stored events
+      - name: "prod-k8s-01"
+        # Path to kubeconfig file.  Set to `~` (null) for in-cluster config.
+        # `~` resolves to null, which triggers in-cluster config loading.
+        kubeconfig: ~
+        # Kubeconfig context to use.  Set to `~` to use the default context.
+        context: ~
+        # Restrict watching to these namespaces.  Empty list = all namespaces.
+        namespaces:
+          - default
+          - production
+        # Only watch pods whose labels match these key=value pairs.
+        label_filters: {}
+        # Optional: Prometheus metrics collection at container stop.
+        metrics:
+          prometheus: "http://10.0.0.1:9090"
+          # {{.PodName}} and {{.Namespace}} are replaced per-event.
+          queries:
+            cpu:       'rate(container_cpu_usage_seconds_total{pod="{{.PodName}}",namespace="{{.Namespace}}"}[30s])'
+            memory:    'container_memory_usage_bytes{pod="{{.PodName}}",namespace="{{.Namespace}}"}'
+            fs_usage:  'container_fs_usage_bytes{pod="{{.PodName}}",namespace="{{.Namespace}}"}'
+            fs_limit:  'container_fs_limit_bytes{pod="{{.PodName}}",namespace="{{.Namespace}}"}'
+            network_rx: 'rate(container_network_receive_bytes_total{pod="{{.PodName}}",namespace="{{.Namespace}}"}[30s])'
+            network_tx: 'rate(container_network_transmit_bytes_total{pod="{{.PodName}}",namespace="{{.Namespace}}"}[30s])'
+
+# ── Output backends ──────────────────────────────────────────────────────────
+output:
+  # ── MongoDB (primary store) ────────────────────────────────────────────────
+  mongodb:
+    # Connection URI (required)
+    uri: "mongodb://user:pass@mongo:27017/admin"
+    # Database name (default: "container_tracker")
+    database: "container_tracker"
+    # Collection names (defaults shown)
+    events_collection:   "container_events"
+    logs_collection:     "container_logs"
+    metrics_collection:  "container_metrics"
+    # Batch write size for metrics (default: 10)
+    batch_size: 10
+
+  # ── Kafka (optional secondary output) ──────────────────────────────────────
+  kafka:
+    # Enable or disable Kafka output (default: false)
+    enabled: false
+    # Bootstrap broker list (default: ["kafka:9092"])
+    brokers: ["kafka:9092"]
+    # Topic names (defaults shown)
+    events_topic:  "container-events"
+    logs_topic:    "container-logs"
+    metrics_topic: "container-metrics"
+    # Batch size for Kafka produces (default: 50)
+    batch_size: 50
