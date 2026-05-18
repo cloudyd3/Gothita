@@ -4,5 +4,6 @@ Gothita is a small, humanoid Pokémon. A small tuft of hair sticks up from the t
 
 
 Gothita intently observes those around it, looking at something only it can see. It can become so focused that it ends up being unaware of attacks. Gothita are normally known to be innocent. It is usually quiet, but sometimes it makes muted cries, even when alone. This is believed to be Gothita communicating with invisible beings. 
+
 ---
 Container watcher and reporter for Docker and Kubernetes. Supports reporting to MongoDB and optionally Kafka. That's it. 
