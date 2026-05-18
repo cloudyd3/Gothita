@@ -125,6 +125,7 @@ class MongoWriter:
                 {
                     "name": m.name,
                     "unit": m.unit,
+                    "query": m.query,
                     "datapoints": [metric_dp_to_dict(dp) for dp in m.datapoints],
                 }
                 for m in metrics_doc.metrics

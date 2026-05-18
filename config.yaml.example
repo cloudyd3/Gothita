@@ -37,15 +37,16 @@ platforms:
         metrics:
           prometheus: "http://10.0.0.1:9090"
 
-          # PromQL queries.  `{{.Name}}` is replaced with the container name.
+          # PromQL queries.  Placeholders `{{.Name}}`, `{{.PodName}}`,
+          # `{{.Namespace}}` are substituted per-event.
           # Keys become metric names in the output document.
           queries:
-            cpu:       'rate(container_cpu_usage_seconds_total{name="{{.Name}}"}[30s])'
-            memory:    'container_memory_usage_bytes{name="{{.Name}}"}'
-            fs_usage:  'container_fs_usage_bytes{name="{{.Name}}"}'
-            fs_limit:  'container_fs_limit_bytes{name="{{.Name}}"}'
-            network_rx: 'rate(container_network_receive_bytes_total{name="{{.Name}}"}[30s])'
-            network_tx: 'rate(container_network_transmit_bytes_total{name="{{.Name}}"}[30s])'
+            cpu:       'rate(container_cpu_usage_seconds_total[30s])'
+            memory:    'container_memory_usage_bytes'
+            fs_usage:  'container_fs_usage_bytes'
+            fs_limit:  'container_fs_limit_bytes'
+            network_rx: 'rate(container_network_receive_bytes_total[30s])'
+            network_tx: 'rate(container_network_transmit_bytes_total[30s])'
 
       # Multiple instances are supported
       - name: "prod-docker-02"
@@ -70,14 +71,13 @@ platforms:
         # Optional: Prometheus metrics collection at container stop.
         metrics:
           prometheus: "http://10.0.0.1:9090"
-          # {{.PodName}} and {{.Namespace}} are replaced per-event.
           queries:
-            cpu:       'rate(container_cpu_usage_seconds_total{pod="{{.PodName}}",namespace="{{.Namespace}}"}[30s])'
-            memory:    'container_memory_usage_bytes{pod="{{.PodName}}",namespace="{{.Namespace}}"}'
-            fs_usage:  'container_fs_usage_bytes{pod="{{.PodName}}",namespace="{{.Namespace}}"}'
-            fs_limit:  'container_fs_limit_bytes{pod="{{.PodName}}",namespace="{{.Namespace}}"}'
-            network_rx: 'rate(container_network_receive_bytes_total{pod="{{.PodName}}",namespace="{{.Namespace}}"}[30s])'
-            network_tx: 'rate(container_network_transmit_bytes_total{pod="{{.PodName}}",namespace="{{.Namespace}}"}[30s])'
+            cpu:       'rate(container_cpu_usage_seconds_total[30s])'
+            memory:    'container_memory_usage_bytes'
+            fs_usage:  'container_fs_usage_bytes'
+            fs_limit:  'container_fs_limit_bytes'
+            network_rx: 'rate(container_network_receive_bytes_total[30s])'
+            network_tx: 'rate(container_network_transmit_bytes_total[30s])'
 
 # ── Output backends ──────────────────────────────────────────────────────────
 output:

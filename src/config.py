@@ -8,8 +8,8 @@ class MetricsInstanceConfig:
     prometheus: str
     queries: dict = field(
         default_factory=lambda: {
-            "cpu": 'rate(container_cpu_usage_seconds_total{name="{{.Name}}"}[30s])',
-            "memory": 'container_memory_usage_bytes{name="{{.Name}}"}',
+            "cpu": 'rate(container_cpu_usage_seconds_total[30s])',
+            "memory": 'container_memory_usage_bytes',
         }
     )
 

@@ -92,7 +92,7 @@ async def collect_metrics_for_event(
         if dps:
             unit = _infer_unit(metric_name)
             metrics_list.append(
-                ContainerMetric(name=metric_name, unit=unit, datapoints=dps)
+                ContainerMetric(name=metric_name, unit=unit, query=query, datapoints=dps)
             )
 
     if not metrics_list:

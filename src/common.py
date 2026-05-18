@@ -119,6 +119,7 @@ class MetricDataPoint:
 class ContainerMetric:
     name: str
     unit: str
+    query: str = ""
     datapoints: list[MetricDataPoint] = field(default_factory=list)
 
 
