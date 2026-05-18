@@ -9,7 +9,9 @@ def _parse_dt(raw: str) -> datetime:
     return _localize(_iso_to_dt(raw))
 
 
-def _ensure_dt(val) -> datetime:
+def _ensure_dt(val) -> datetime | None:
+    if val is None:
+        return None
     if isinstance(val, (int, float)):
         return datetime.fromtimestamp(val, tz=timezone.utc)
     if isinstance(val, str):
@@ -129,6 +131,7 @@ async def collect_container(
     event_exit_code: int | None = None,
     event_time: int | None = None,
     event_start_time: int | None = None,
+    event_restart_count: int | None = None,
 ) -> ContainerEvent | None:
     try:
         container = docker.containers.container(container_id)
@@ -143,7 +146,7 @@ async def collect_container(
     name = inspect.get("Name", "").lstrip("/")
     os_info = await _get_os_details(docker)
 
-    started_dt = _ensure_dt(event_start_time)
+    started_dt = _ensure_dt(event_start_time) or _parse_dt(state.get("StartedAt", ""))
     finished_dt = _ensure_dt(event_time) or _parse_dt(state.get("FinishedAt", ""))
 
     origin = Origin(
@@ -166,7 +169,11 @@ async def collect_container(
         "stop": "stopped",
     }
     state_str = action_map.get(event_action, "exited")
-    restart_count = inspect.get("RestartCount", 0)
+    restart_count = (
+        event_restart_count
+        if event_restart_count is not None
+        else inspect.get("RestartCount", 0)
+    )
     restart_policy_raw = host_config.get("RestartPolicy", {})
     restart_policy = None
     if restart_policy_raw and restart_policy_raw.get("Name"):

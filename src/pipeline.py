@@ -130,7 +130,10 @@ class Pipeline:
         if prom_url:
             queries = self._get_platform_attr(platform, instance, "queries")
             if queries:
-                metrics_doc = await collect_metrics_for_event(event, prom_url, queries)
+                step = self._get_platform_attr(platform, instance, "step")
+                metrics_doc = await collect_metrics_for_event(
+                    event, prom_url, queries, step=step,
+                )
                 if metrics_doc:
                     metrics_id = await self.mongo.write_metrics(metrics_doc)
                     await self.mongo.update_event_metrics_link(
@@ -207,6 +210,7 @@ class Pipeline:
                     event_time=msg.get("time"),
                     event_start_time=msg.get("start_time"),
                     event_action=msg.get("event_action"),
+                    event_restart_count=msg.get("restart_count"),
                 )
 
         elif platform == "kubernetes":

@@ -29,8 +29,9 @@ class KafkaWriter:
         try:
             self.producer = AIOKafkaProducer(
                 bootstrap_servers=",".join(self.config.brokers),
-                client_id="container-tracker",
+                client_id=self.config.client_id,
                 acks="all",
+                max_request_size=self.config.max_request_size
             )
             await self.producer.start()
             await asyncio.wait_for(

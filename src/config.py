@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 @dataclass
 class MetricsInstanceConfig:
     prometheus: str
+    step: str = "15s"
     queries: dict = field(
         default_factory=lambda: {
             "cpu": 'rate(container_cpu_usage_seconds_total[30s])',
@@ -70,7 +71,9 @@ class KafkaConfig:
     events_topic: str = "container-events"
     logs_topic: str = "container-logs"
     metrics_topic: str = "container-metrics"
+    client_id: str = "gothita-tracker"
     batch_size: int = 50
+    max_request_size: int = 5242880
 
 
 @dataclass

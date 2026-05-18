@@ -1,4 +1,5 @@
 import logging
+import statistics
 from datetime import datetime, timezone
 
 import aiohttp
@@ -11,18 +12,27 @@ from src.common import (
     _dt_to_iso,
 )
 
+
 logger = logging.getLogger(__name__)
 
 
 async def _run_promql_range(
-    prom_url: str, query: str, start: datetime, end: datetime, step: str = "15s"
+    prom_url: str,
+    query: str,
+    start: datetime,
+    end: datetime,
+    step: str = "15s",
+    container_name: str = "",
 ) -> list[MetricDataPoint]:
+    if container_name:
+        query = query.replace("{label}", f'{{name="{container_name}"}}')
     params = {
         "query": query,
         "start": start.timestamp(),
         "end": end.timestamp(),
         "step": step,
     }
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
@@ -37,7 +47,15 @@ async def _run_promql_range(
         results = data.get("data", {}).get("result", [])
         if not results:
             return []
-        values = results[-1].get("values", [])
+
+        def _score(r):
+            vals = r.get("values", [])
+            nums = [float(v[1]) for v in vals] if vals else [0.0]
+            std = statistics.stdev(nums) if len(nums) > 1 else 0.0
+            return (len(vals), std)
+
+        chosen = max(results, key=_score)
+        values = chosen.get("values", [])
         return [
             MetricDataPoint(
                 timestamp=datetime.fromtimestamp(float(v[0]), tz=timezone.utc),
@@ -51,7 +69,10 @@ async def _run_promql_range(
 
 
 async def collect_metrics_for_event(
-    event: ContainerEvent, prom_url: str, queries: dict[str, str], step: str = "15s"
+    event: ContainerEvent,
+    prom_url: str,
+    queries: dict[str, str],
+    step: str = "15s",
 ) -> ContainerMetricsDoc | None:
     if not prom_url:
         return None
@@ -84,15 +105,26 @@ async def collect_metrics_for_event(
             "PodName": pod_name,
             "Namespace": namespace,
         }
+        for lk, lv in event.labels.items():
+            labels[f"Label.{lk}"] = lv
         query = query_tmpl
         for k, v in labels.items():
             query = query.replace(f"{{{{.{k}}}}}", str(v))
 
-        dps = await _run_promql_range(prom_url, query, start, end, step)
+        dps = await _run_promql_range(
+            prom_url,
+            query,
+            start,
+            end,
+            step,
+            container_name=container_name,
+        )
         if dps:
             unit = _infer_unit(metric_name)
             metrics_list.append(
-                ContainerMetric(name=metric_name, unit=unit, query=query, datapoints=dps)
+                ContainerMetric(
+                    name=metric_name, unit=unit, query=query, datapoints=dps
+                )
             )
 
     if not metrics_list:

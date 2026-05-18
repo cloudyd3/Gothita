@@ -35,6 +35,7 @@ async def watch_docker(
                 )
 
                 container_starts: dict[str, object] = {}
+                terminated: set[str] = set()
                 try:
                     raw_list = await docker.containers.list(all=True)
                     for c in raw_list:
@@ -88,14 +89,13 @@ async def watch_docker(
 
                             if event_action == "start":
                                 container_starts[container_id] = event.get("time")
+                                terminated.discard(container_id)
                                 continue
 
+                            attrs = event.get("Actor", {}).get("Attributes", {})
+
                             if event_action == "kill":
-                                exit_code = (
-                                    event.get("Actor", {})
-                                    .get("Attributes", {})
-                                    .get("exitCode")
-                                )
+                                exit_code = attrs.get("exitCode")
                                 if exit_code is not None:
                                     exit_code = int(exit_code)
                                     logger.info(
@@ -104,9 +104,11 @@ async def watch_docker(
                                         container_id,
                                         exit_code,
                                     )
+                                    terminated.add(container_id)
                                     start_time = container_starts.pop(
                                         container_id, None
                                     )
+                                    rc = attrs.get("restartCount")
                                     await event_queue.put(
                                         {
                                             "platform": "docker",
@@ -116,6 +118,7 @@ async def watch_docker(
                                             "time": event.get("time"),
                                             "start_time": start_time,
                                             "event_action": "kill",
+                                            "restart_count": int(rc) if rc else None,
                                         }
                                     )
                                 continue
@@ -126,7 +129,9 @@ async def watch_docker(
                                     config.name,
                                     container_id,
                                 )
+                                terminated.add(container_id)
                                 start_time = container_starts.pop(container_id, None)
+                                rc = attrs.get("restartCount")
                                 await event_queue.put(
                                     {
                                         "platform": "docker",
@@ -136,19 +141,19 @@ async def watch_docker(
                                         "time": event.get("time"),
                                         "start_time": start_time,
                                         "event_action": "oom",
+                                        "restart_count": int(rc) if rc else None,
                                     }
                                 )
                                 continue
 
                             if event_action in ("die", "stop"):
-                                exit_code = (
-                                    event.get("Actor", {})
-                                    .get("Attributes", {})
-                                    .get("exitCode")
-                                )
+                                exit_code = attrs.get("exitCode")
                                 if exit_code is not None:
                                     exit_code = int(exit_code)
                                     if exit_code != 0:
+                                        if container_id in terminated:
+                                            terminated.discard(container_id)
+                                            continue
                                         logger.info(
                                             "Docker watcher [%s] container %s exited with code %d (%s)",
                                             config.name,
@@ -159,6 +164,7 @@ async def watch_docker(
                                         start_time = container_starts.pop(
                                             container_id, None
                                         )
+                                        rc = attrs.get("restartCount")
                                         await event_queue.put(
                                             {
                                                 "platform": "docker",
@@ -168,6 +174,7 @@ async def watch_docker(
                                                 "time": event.get("time"),
                                                 "start_time": start_time,
                                                 "event_action": event_action,
+                                                "restart_count": int(rc) if rc else None,
                                             }
                                         )
                                 continue

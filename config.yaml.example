@@ -37,16 +37,23 @@ platforms:
         metrics:
           prometheus: "http://10.0.0.1:9090"
 
-          # PromQL queries.  Placeholders `{{.Name}}`, `{{.PodName}}`,
-          # `{{.Namespace}}` are substituted per-event.
+          # PromQL query step (default: "15s")
+          step: "15s"
+
+          # PromQL queries.  Must include `{label}` in each query —
+          # it is replaced with the container name label selector
+          # (e.g. `name="jellyfin-latest"`).  Placeholders
+          # `{{.Name}}`, `{{.PodName}}`, `{{.Namespace}}` and
+          # `{{.Label.<key>}}` (e.g. `{{.Label.com.docker.compose.service}}`)
+          # are also substituted per-event.
           # Keys become metric names in the output document.
           queries:
-            cpu:       'rate(container_cpu_usage_seconds_total[30s])'
-            memory:    'container_memory_usage_bytes'
-            fs_usage:  'container_fs_usage_bytes'
-            fs_limit:  'container_fs_limit_bytes'
-            network_rx: 'rate(container_network_receive_bytes_total[30s])'
-            network_tx: 'rate(container_network_transmit_bytes_total[30s])'
+            cpu:       'rate(container_cpu_usage_seconds_total{label}[30s])'
+            memory:    'container_memory_usage_bytes{label}'
+            fs_usage:  'container_fs_usage_bytes{label}'
+            fs_limit:  'container_fs_limit_bytes{label}'
+            network_rx: 'rate(container_network_receive_bytes_total{label}[30s])'
+            network_tx: 'rate(container_network_transmit_bytes_total{label}[30s])'
 
       # Multiple instances are supported
       - name: "prod-docker-02"
